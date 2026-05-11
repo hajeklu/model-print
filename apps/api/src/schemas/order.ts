@@ -3,15 +3,26 @@ import { z } from "zod";
 export const deliveryMethodSchema = z.enum(["standard", "express", "pickup"]);
 export const paymentMethodSchema = z.enum(["bank_transfer", "cod", "card"]);
 
-export const shippingAddressSchema = z.object({
-  line1: z.string().min(1).max(200),
-  line2: z.string().max(200).optional(),
-  city: z.string().min(1).max(100),
-  postalCode: z.string().min(1).max(20),
-  country: z.string().length(2).toUpperCase(),
+export const modelDetailsSchema = z.object({
+  fileFormat: z.string().min(1).max(20),
+  fileSizeBytes: z.number().int().positive(),
+  scale: z.string().min(1).max(20),
+  color: z.string().min(1).max(50),
+  quality: z.enum(["standard", "detail"]),
+  nozzleMm: z.union([z.literal(0.4), z.literal(0.2)]),
+  bboxMm: z
+    .object({
+      x: z.number().nonnegative(),
+      y: z.number().nonnegative(),
+      z: z.number().nonnegative(),
+    })
+    .optional(),
+  volumeCm3: z.number().nonnegative().optional(),
+  estimatedPriceCzk: z.number().int().nonnegative().optional(),
 });
 
 export const contactSchema = z.object({
+  name: z.string().min(2).max(200),
   email: z.string().email().max(254),
   phone: z.string().max(40).optional(),
 });
@@ -19,10 +30,9 @@ export const contactSchema = z.object({
 export const createOrderBodySchema = z.object({
   uploadId: z.string().uuid(),
   contact: contactSchema,
-  shippingAddress: shippingAddressSchema,
-  deliveryMethod: deliveryMethodSchema,
-  paymentMethod: paymentMethodSchema,
-  notes: z.string().max(2000).optional(),
+  address: z.string().max(500).optional(),
+  model: modelDetailsSchema,
+  notes: z.string().max(1000).optional(),
   reference: z.string().max(100).optional(),
 });
 
@@ -33,9 +43,8 @@ export function buildCheckoutSnapshot(
 ): Record<string, unknown> {
   return {
     contact: body.contact,
-    shippingAddress: body.shippingAddress,
-    deliveryMethod: body.deliveryMethod,
-    paymentMethod: body.paymentMethod,
+    address: body.address,
+    model: body.model,
     notes: body.notes,
     reference: body.reference,
   };

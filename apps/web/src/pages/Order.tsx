@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ModelViewer } from "@/components/ModelViewer";
 import { toast } from "sonner";
 import { ACCEPTED_EXTS, MAX_FILE_BYTES, getFormatInfo } from "@/lib/format-info";
 import { parseModel, estimatePrice, type ModelStats } from "@/lib/parse-model";
@@ -17,6 +17,8 @@ import { UploadCloud, FileCheck, Loader2, X } from "lucide-react";
 
 const COLORS = [
   { id: "white", label: "Bílá", hex: "#f3f1ec" },
+  { id: "black", label: "Černá", hex: "#111111" },
+  { id: "red", label: "Červená", hex: "#d13b2f" },
   { id: "stone", label: "Kámen", hex: "#a8a29e" },
   { id: "wood", label: "Dřevo", hex: "#8b6f4d" },
   { id: "anthracite", label: "Antracit", hex: "#2d2d2d" },
@@ -32,6 +34,45 @@ const orderSchema = z.object({
   consent: z.literal(true, { errorMap: () => ({ message: "Souhlas je nutný" }) }),
 });
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
+
+interface UploadResponse {
+  uploadId: string;
+  originalFilename: string;
+  sizeBytes: number;
+  sha256: string;
+}
+
+function isUploadResponse(value: unknown): value is UploadResponse {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "uploadId" in value &&
+    typeof value.uploadId === "string"
+  );
+}
+
+async function readApiError(response: Response): Promise<string> {
+  const text = await response.text().catch(() => "");
+  if (!text) {
+    return `HTTP ${response.status}`;
+  }
+  try {
+    const parsed = JSON.parse(text) as unknown;
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "error" in parsed &&
+      typeof parsed.error === "string"
+    ) {
+      return parsed.error;
+    }
+  } catch {
+    // Fall back to the raw response body below.
+  }
+  return text;
+}
+
 const Order = () => {
   const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
@@ -44,6 +85,7 @@ const Order = () => {
   const [drag, setDrag] = useState(false);
 
   const fmt = file ? getFormatInfo(file.name) : null;
+  const selectedColor = COLORS.find((c) => c.id === color) ?? COLORS[0];
   const price = stats ? estimatePrice(stats.volumeCm3, scale, quality) : null;
 
   useEffect(() => {
@@ -100,32 +142,65 @@ const Order = () => {
 
     setSubmitting(true);
     try {
-      const endpoint = import.meta.env.VITE_ORDER_API_URL || "/api/orders";
-      const fdSend = new FormData();
-      fdSend.append("file", file);
-      fdSend.append("name", parsed.data.name);
-      fdSend.append("email", parsed.data.email);
-      if (parsed.data.phone) fdSend.append("phone", parsed.data.phone);
-      if (parsed.data.address) fdSend.append("address", parsed.data.address);
-      if (parsed.data.note) fdSend.append("note", parsed.data.note);
-      fdSend.append("file_format", fmt.ext);
-      fdSend.append("file_size_bytes", String(file.size));
-      fdSend.append("scale", scale);
-      fdSend.append("color", color);
-      fdSend.append("quality", quality);
-      if (stats) {
-        fdSend.append("bbox_mm", JSON.stringify(stats.bboxMm));
-        fdSend.append("volume_cm3", String(stats.volumeCm3));
-      }
-      if (price != null) fdSend.append("estimated_price_czk", String(price));
+      const uploadForm = new FormData();
+      uploadForm.append("file", file);
 
-      const res = await fetch(endpoint, { method: "POST", body: fdSend });
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(text || `HTTP ${res.status}`);
+      const uploadRes = await fetch(`${API_BASE_URL}/uploads`, {
+        method: "POST",
+        body: uploadForm,
+      });
+      if (!uploadRes.ok) {
+        throw new Error(await readApiError(uploadRes));
       }
 
-      navigate("/dekujeme", { state: { email: parsed.data.email, price, hasEstimate: !!price } });
+      const uploadJson: unknown = await uploadRes.json();
+      if (!isUploadResponse(uploadJson)) {
+        throw new Error("Upload response did not include an upload ID.");
+      }
+
+      const orderRes = await fetch(`${API_BASE_URL}/orders`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          uploadId: uploadJson.uploadId,
+          contact: {
+            name: parsed.data.name,
+            email: parsed.data.email,
+            phone: parsed.data.phone,
+          },
+          address: parsed.data.address,
+          notes: parsed.data.note,
+          model: {
+            fileFormat: fmt.ext,
+            fileSizeBytes: file.size,
+            scale,
+            color,
+            quality,
+            nozzleMm: quality === "detail" ? 0.2 : 0.4,
+            bboxMm: stats?.bboxMm,
+            volumeCm3: stats?.volumeCm3,
+            estimatedPriceCzk: price ?? undefined,
+          },
+        }),
+      });
+      if (!orderRes.ok) {
+        throw new Error(await readApiError(orderRes));
+      }
+
+      const orderJson = await orderRes.json().catch(() => undefined);
+      const orderId =
+        typeof orderJson === "object" &&
+        orderJson !== null &&
+        "orderId" in orderJson &&
+        typeof orderJson.orderId === "string"
+          ? orderJson.orderId
+          : undefined;
+
+      navigate("/dekujeme", {
+        state: { email: parsed.data.email, price, hasEstimate: !!price, orderId },
+      });
     } catch (err: unknown) {
       console.error(err);
       const message = err instanceof Error ? err.message : "Zkuste to prosím znovu.";
@@ -193,7 +268,8 @@ const Order = () => {
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="p-4 font-mono text-xs">
+                <div className="p-4 space-y-4 font-mono text-xs">
+                  <ModelViewer file={file} modelColor={selectedColor.hex} />
                   {parsing && (
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Loader2 className="h-3 w-3 animate-spin" /> Analyzuji geometrii…
@@ -221,8 +297,8 @@ const Order = () => {
             <div className="space-y-6">
               <div>
                 <Label className="font-mono uppercase text-xs tracking-wider mb-3 block">Měřítko</Label>
-                <RadioGroup value={scale} onValueChange={setScale} className="grid grid-cols-4 gap-2">
-                  {["1:50", "1:100", "1:200", "1:500"].map((s) => (
+                <RadioGroup value={scale} onValueChange={setScale} className="grid grid-cols-3 gap-2">
+                  {["1:100", "1:200", "1:500"].map((s) => (
                     <label
                       key={s}
                       className={`border p-3 text-center cursor-pointer font-mono text-sm transition ${
@@ -256,17 +332,17 @@ const Order = () => {
               </div>
 
               <div>
-                <Label className="font-mono uppercase text-xs tracking-wider mb-3 block">Kvalita detailu</Label>
+                <Label className="font-mono uppercase text-xs tracking-wider mb-3 block">Tryska</Label>
                 <RadioGroup value={quality} onValueChange={setQuality} className="grid grid-cols-2 gap-2">
                   <label className={`border p-4 cursor-pointer transition ${quality === "standard" ? "border-primary bg-primary/5" : "border-border"}`}>
                     <RadioGroupItem value="standard" className="sr-only" />
-                    <div className="font-semibold">Standard</div>
-                    <div className="text-xs text-muted-foreground">vrstva 0,2 mm</div>
+                    <div className="font-semibold">0,4 mm</div>
+                    <div className="text-xs text-muted-foreground">rychlejší tisk · hrubší detail</div>
                   </label>
                   <label className={`border p-4 cursor-pointer transition ${quality === "detail" ? "border-primary bg-primary/5" : "border-border"}`}>
                     <RadioGroupItem value="detail" className="sr-only" />
-                    <div className="font-semibold">Detail</div>
-                    <div className="text-xs text-muted-foreground">vrstva 0,12 mm · jemnější detaily</div>
+                    <div className="font-semibold">0,2 mm</div>
+                    <div className="text-xs text-muted-foreground">jemnější detail · delší tisk</div>
                   </label>
                 </RadioGroup>
               </div>
@@ -278,19 +354,34 @@ const Order = () => {
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="name">Jméno *</Label>
-                  <Input id="name" name="name" required maxLength={200} />
+                  <Input id="name" name="name" required maxLength={200} autoComplete="name" />
                 </div>
                 <div>
                   <Label htmlFor="email">Email *</Label>
-                  <Input id="email" name="email" type="email" required maxLength={320} />
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    maxLength={320}
+                    autoComplete="email"
+                    inputMode="email"
+                  />
                 </div>
                 <div>
                   <Label htmlFor="phone">Telefon</Label>
-                  <Input id="phone" name="phone" type="tel" maxLength={50} />
+                  <Input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    maxLength={50}
+                    autoComplete="tel"
+                    inputMode="tel"
+                  />
                 </div>
                 <div>
                   <Label htmlFor="address">Doručovací adresa</Label>
-                  <Input id="address" name="address" maxLength={500} />
+                  <Input id="address" name="address" maxLength={500} autoComplete="street-address" />
                 </div>
               </div>
               <div>
@@ -325,8 +416,8 @@ const Order = () => {
                 <Row label="Soubor" value={file?.name ?? "—"} />
                 <Row label="Formát" value={fmt ? "." + fmt.ext : "—"} />
                 <Row label="Měřítko" value={scale} />
-                <Row label="Barva" value={COLORS.find((c) => c.id === color)?.label ?? "—"} />
-                <Row label="Kvalita" value={quality === "detail" ? "Detail (0,12 mm)" : "Standard (0,2 mm)"} />
+                <Row label="Barva" value={selectedColor.label} />
+                <Row label="Tryska" value={quality === "detail" ? "0,2 mm" : "0,4 mm"} />
                 {stats && <Row label="Objem modelu" value={`${stats.volumeCm3} cm³`} />}
               </div>
               <div className="p-6 border-t border-border">

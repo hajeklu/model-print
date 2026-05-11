@@ -165,14 +165,14 @@ const Index = () => {
             <AccordionTrigger>Jaké měřítko je nejvhodnější pro rodinný dům?</AccordionTrigger>
             <AccordionContent>
               Nejčastěji 1:100 (vejde se na stůl, čitelné okna a balkony) nebo 1:200
-              pro větší usedlosti a sady budov. 1:50 volíme jen pro detaily a interiéry.
+              pro větší usedlosti a sady budov. Menší detaily řešíme individuálně podle modelu.
             </AccordionContent>
           </AccordionItem>
           <AccordionItem value="2">
             <AccordionTrigger>Z jakého materiálu modely jsou?</AccordionTrigger>
             <AccordionContent>
               Standardně biopolymer PLA — pevný, dlouhodobě stálý a recyklovatelný.
-              Vyrábíme aditivní technologií FDM ve vrstvách 0,12–0,2 mm.
+              Vyrábíme aditivní technologií FDM s tryskou 0,4 mm nebo 0,2 mm podle detailu.
             </AccordionContent>
           </AccordionItem>
           <AccordionItem value="3">

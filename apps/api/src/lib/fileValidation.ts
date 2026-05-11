@@ -12,6 +12,10 @@ const EXTENSION_TO_MIME: Record<string, string[]> = {
   stp: ["model/step", "application/step", "text/plain", "application/octet-stream"],
   ply: ["application/octet-stream", "text/plain", "model/ply"],
   amf: ["application/amf", "application/octet-stream", "text/xml", "application/xml"],
+  ifc: ["application/octet-stream", "text/plain", "application/x-step", "application/ifc"],
+  skp: ["application/octet-stream", "application/vnd.sketchup.skp"],
+  "3dm": ["application/octet-stream", "model/vnd.3dm"],
+  dae: ["application/octet-stream", "text/xml", "application/xml", "model/vnd.collada+xml"],
 };
 
 export function getExtension(filename: string): string {

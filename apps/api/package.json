@@ -8,8 +8,8 @@
     "build": "tsc",
     "start": "env -i PATH=\"$PATH\" HOME=\"$HOME\" node --env-file=.env.production dist/server.js",
     "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:push": "prisma db push",
+    "db:migrate": "env DATABASE_URL=file:./dev.db prisma migrate dev",
+    "db:push": "env DATABASE_URL=file:./dev.db prisma db push",
     "postinstall": "prisma generate"
   },
   "engines": {

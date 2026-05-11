@@ -98,14 +98,14 @@ export async function parseModel(file: File): Promise<ModelStats | null> {
 export const PRICING = {
   setup: 250,
   perCm3: 12,
-  scaleFactor: { "1:50": 1.6, "1:100": 1.0, "1:200": 0.6, "1:500": 0.35 } as Record<string, number>,
-  qualityFactor: { standard: 1.0, detail: 1.4 } as Record<string, number>,
+  scaleFactor: { "1:100": 1.0, "1:200": 0.6, "1:500": 0.35 } as Record<string, number>,
+  nozzleFactor: { standard: 1.0, detail: 1.25 } as Record<string, number>,
 };
 
 export function estimatePrice(volumeCm3: number, scale: string, quality: string): number {
   const sf = PRICING.scaleFactor[scale] ?? 1;
-  const qf = PRICING.qualityFactor[quality] ?? 1;
-  const raw = PRICING.setup + volumeCm3 * PRICING.perCm3 * sf * sf * sf * qf;
+  const nf = PRICING.nozzleFactor[quality] ?? 1;
+  const raw = PRICING.setup + volumeCm3 * PRICING.perCm3 * sf * sf * sf * nf;
   // round to 10 CZK
   return Math.max(PRICING.setup, Math.round(raw / 10) * 10);
 }

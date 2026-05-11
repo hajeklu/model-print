@@ -6,6 +6,7 @@
     "apps/*"
   ],
   "scripts": {
+    "dev": "yarn dev:api & yarn dev:web & wait",
     "dev:api": "yarn workspace @model-print/api dev",
     "dev:web": "yarn workspace @model-print/web dev",
     "build:api": "yarn workspace @model-print/api build",
