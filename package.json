@@ -1,33 +1,25 @@
 {
-  "name": "model-print",
+  "name": "model-print-monorepo",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
-    "dev": "env -i PATH=\"$PATH\" HOME=\"$HOME\" node --env-file=.env.development --watch --import tsx src/server.ts",
-    "build": "tsc",
-    "start": "env -i PATH=\"$PATH\" HOME=\"$HOME\" node --env-file=.env.production dist/server.js",
-    "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:push": "prisma db push",
-    "postinstall": "prisma generate"
+    "dev:api": "yarn workspace @model-print/api dev",
+    "dev:web": "yarn workspace @model-print/web dev",
+    "build:api": "yarn workspace @model-print/api build",
+    "build:web": "yarn workspace @model-print/web build",
+    "build": "yarn build:api && yarn build:web",
+    "start:api": "yarn workspace @model-print/api start",
+    "preview:web": "yarn workspace @model-print/web preview",
+    "lint:web": "yarn workspace @model-print/web lint",
+    "test:web": "yarn workspace @model-print/web test",
+    "db:generate": "yarn workspace @model-print/api db:generate",
+    "db:migrate": "yarn workspace @model-print/api db:migrate",
+    "db:push": "yarn workspace @model-print/api db:push"
   },
   "engines": {
     "node": ">=20"
-  },
-  "dependencies": {
-    "@fastify/cors": "^10.0.2",
-    "@fastify/helmet": "^12.0.1",
-    "@fastify/multipart": "^9.0.3",
-    "@fastify/rate-limit": "^10.2.2",
-    "@prisma/client": "^6.19.0",
-    "fastify": "^5.2.1",
-    "zod": "^3.24.4"
-  },
-  "devDependencies": {
-    "@types/node": "^22.14.1",
-    "prisma": "^6.19.0",
-    "tsx": "^4.19.3",
-    "typescript": "^5.8.3"
   }
 }

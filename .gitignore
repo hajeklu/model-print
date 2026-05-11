@@ -1,23 +1,44 @@
 # Dependencies
 node_modules/
+apps/*/node_modules/
 
 # Build output
 dist/
 build/
 coverage/
+apps/*/dist/
+apps/*/dist-ssr/
+apps/*/build/
+apps/*/coverage/
 
 # Environment files
 .env
 .env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+
+# Non-Yarn lockfiles
+package-lock.json
+pnpm-lock.yaml
+bun.lockb
 
 # Runtime data
 uploads/
+apps/*/uploads/
 tmp/
 temp/
+apps/*/tmp/
+apps/*/temp/
 *.db
 *.db-journal
 *.sqlite
 *.sqlite3
+apps/*/*.db
+apps/*/*.db-journal
+apps/*/*.sqlite
+apps/*/*.sqlite3
 
 # Logs
 logs/
@@ -33,6 +54,16 @@ pnpm-debug.log*
 .turbo/
 .tsbuildinfo
 *.tsbuildinfo
+apps/*/.cache/
+apps/*/.parcel-cache/
+apps/*/.turbo/
+apps/*/.tsbuildinfo
+
+# Supabase local state
+supabase/.branches/
+supabase/.temp/
+apps/*/supabase/.branches/
+apps/*/supabase/.temp/
 
 # Editor and OS files
 .DS_Store
