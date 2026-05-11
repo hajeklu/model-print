@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderStatus {
+  pending
+  accepted
+  printing
+  shipped
+  cancelled
+}
+
+model PendingUpload {
+  id               String    @id @default(uuid())
+  createdAt        DateTime  @default(now())
+  storedPath       String
+  originalFilename String
+  mimeType         String?
+  sizeBytes        Int
+  sha256           String?
+  consumedAt       DateTime?
+}
+
+model Order {
+  id        String      @id @default(uuid())
+  createdAt DateTime    @default(now())
+  status    OrderStatus @default(pending)
+  checkout  Json
+  modelFile ModelFile?
+}
+
+model ModelFile {
+  id               String @id @default(uuid())
+  orderId          String @unique
+  order            Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  storedPath       String
+  originalFilename String
+  mimeType         String?
+  sizeBytes        Int
+  sha256           String?
+}
