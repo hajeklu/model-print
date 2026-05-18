@@ -1,0 +1,17 @@
+{
+  "name": "Modelarna",
+  "short_name": "Modelarna",
+  "description": "Physical 3D architectural scale models — upload your project, get a quote.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#faf9f7",
+  "theme_color": "#c4654a",
+  "lang": "cs",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}

@@ -18,7 +18,9 @@ export const modelDetailsSchema = z.object({
     })
     .optional(),
   volumeCm3: z.number().nonnegative().optional(),
-  estimatedPriceCzk: z.number().int().nonnegative().optional(),
+  estimatedMaterialGrams: z.number().int().nonnegative().optional(),
+  estimatedFilamentMeters: z.number().nonnegative().optional(),
+  estimatedPriceEur: z.number().int().nonnegative().optional(),
 });
 
 export const contactSchema = z.object({

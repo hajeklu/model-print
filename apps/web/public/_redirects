@@ -1,0 +1,16 @@
+# Legacy Czech slugs on localized paths → canonical slugs
+/en/objednavka /en/order 301
+/en/dekujeme /en/thank-you 301
+/de/objednavka /de/bestellung 301
+/de/dekujeme /de/danke 301
+/pl/objednavka /pl/zamowienie 301
+/pl/dekujeme /pl/dziekujemy 301
+/it/objednavka /it/ordine 301
+/it/dekujeme /it/grazie 301
+/es/objednavka /es/pedido 301
+/es/dekujeme /es/gracias 301
+/fr/objednavka /fr/commande 301
+/fr/dekujeme /fr/merci 301
+
+# SPA fallback (must be last)
+/* /index.html 200

@@ -8,6 +8,18 @@ export interface ModelStats {
   volumeCm3: number;
 }
 
+export interface MaterialEstimate {
+  grams: number;
+  filamentMeters: number;
+}
+
+/** How we approximate filament use without running a slicer (Cura/Prusa). */
+export const MATERIAL_ESTIMATE_METHOD = {
+  volumeSource: "Signed tetrahedron sum over mesh triangles (assumes mm, watertight mesh).",
+  infill: "100 % — full scaled mesh volume is treated as solid PLA (no slicer infill %).",
+  density: "PLA 1.24 g/cm³, 1.75 mm filament for length.",
+} as const;
+
 function meshVolume(geom: THREE.BufferGeometry): number {
   const pos = geom.attributes.position;
   if (!pos) return 0;
@@ -33,12 +45,10 @@ function meshVolume(geom: THREE.BufferGeometry): number {
 }
 
 function statsFromObject(obj: THREE.Object3D): ModelStats {
-  // Aggregate bbox
   const box = new THREE.Box3().setFromObject(obj);
   const size = new THREE.Vector3();
   box.getSize(size);
 
-  // Sum volume across all meshes (units = source units, assume mm)
   let volumeMm3 = 0;
   obj.traverse((child) => {
     const mesh = child as THREE.Mesh;
@@ -49,7 +59,7 @@ function statsFromObject(obj: THREE.Object3D): ModelStats {
 
   return {
     bboxMm: { x: round(size.x), y: round(size.y), z: round(size.z) },
-    volumeCm3: round(volumeMm3 / 1000), // mm^3 → cm^3
+    volumeCm3: round(volumeMm3 / 1000),
   };
 }
 
@@ -94,18 +104,71 @@ export async function parseModel(file: File): Promise<ModelStats | null> {
   return null;
 }
 
-// Pricing (CZK)
+/** Indicative shop pricing in EUR (not binding). */
 export const PRICING = {
-  setup: 250,
-  perCm3: 12,
-  scaleFactor: { "1:100": 1.0, "1:200": 0.6, "1:500": 0.35 } as Record<string, number>,
-  nozzleFactor: { standard: 1.0, detail: 1.25 } as Record<string, number>,
+  baseEur: 95,
 };
 
-export function estimatePrice(volumeCm3: number, scale: string, quality: string): number {
-  const sf = PRICING.scaleFactor[scale] ?? 1;
-  const nf = PRICING.nozzleFactor[quality] ?? 1;
-  const raw = PRICING.setup + volumeCm3 * PRICING.perCm3 * sf * sf * sf * nf;
-  // round to 10 CZK
-  return Math.max(PRICING.setup, Math.round(raw / 10) * 10);
+/** Linear size ratio for scale labels like `1:100` → 0.01. `1:1` → 1. */
+export function parseScaleLinearRatio(scale: string): number {
+  const match = /^1:(\d+)$/.exec(scale);
+  if (!match) return 1;
+  const denominator = Number(match[1]);
+  return denominator > 0 ? 1 / denominator : 1;
+}
+
+export function scaledVolumeCm3(volumeCm3: number, scale: string): number {
+  const linear = parseScaleLinearRatio(scale);
+  return round(volumeCm3 * linear ** 3);
+}
+
+export function scaledBboxMm(
+  bboxMm: ModelStats["bboxMm"],
+  scale: string,
+): ModelStats["bboxMm"] {
+  const linear = parseScaleLinearRatio(scale);
+  return {
+    x: round(bboxMm.x * linear),
+    y: round(bboxMm.y * linear),
+    z: round(bboxMm.z * linear),
+  };
+}
+
+/** Smallest printable axis length at the given scale (mm, unrounded). */
+export const MIN_PRINT_AXIS_MM = 1;
+
+export function smallestScaledAxisMm(
+  bboxMm: ModelStats["bboxMm"],
+  scale: string,
+): number {
+  const linear = parseScaleLinearRatio(scale);
+  return Math.min(bboxMm.x, bboxMm.y, bboxMm.z) * linear;
+}
+
+export function meetsMinimumPrintSize(
+  bboxMm: ModelStats["bboxMm"],
+  scale: string,
+): boolean {
+  return smallestScaledAxisMm(bboxMm, scale) >= MIN_PRINT_AXIS_MM;
+}
+
+const PLA_DENSITY_G_CM3 = 1.24;
+const FILAMENT_DIAMETER_MM = 1.75;
+
+export function estimatePrice(volumeCm3: number, scale: string): number {
+  const { grams } = estimateMaterialUsage(volumeCm3, scale);
+  return Math.round(PRICING.baseEur + grams / 10);
+}
+
+export function estimateMaterialUsage(volumeCm3: number, scale: string): MaterialEstimate {
+  const materialVolumeCm3 = scaledVolumeCm3(volumeCm3, scale);
+  const grams = materialVolumeCm3 * PLA_DENSITY_G_CM3;
+  const filamentRadiusCm = FILAMENT_DIAMETER_MM / 10 / 2;
+  const filamentAreaCm2 = Math.PI * filamentRadiusCm * filamentRadiusCm;
+  const filamentMeters = materialVolumeCm3 / filamentAreaCm2 / 100;
+
+  return {
+    grams: Math.round(grams),
+    filamentMeters: Math.round(filamentMeters * 10) / 10,
+  };
 }

@@ -4,20 +4,19 @@ export interface FormatInfo {
   ext: string;
   label: string;
   group: FormatGroup;
-  description: string;
   parsable: boolean; // can we compute volume in browser
 }
 
 export const FORMATS: FormatInfo[] = [
-  { ext: "stl", label: "STL", group: "ready", description: "Standard pro 3D tisk", parsable: true },
-  { ext: "3mf", label: "3MF", group: "ready", description: "Moderní formát s metadaty", parsable: true },
-  { ext: "obj", label: "OBJ", group: "ready", description: "Mesh s geometrií", parsable: true },
-  { ext: "step", label: "STEP", group: "ready", description: "Přesný CAD model", parsable: false },
-  { ext: "stp", label: "STP", group: "ready", description: "Přesný CAD model", parsable: false },
-  { ext: "ifc", label: "IFC", group: "architectural", description: "BIM model (Revit, ArchiCAD)", parsable: false },
-  { ext: "skp", label: "SKP", group: "architectural", description: "SketchUp projekt", parsable: false },
-  { ext: "3dm", label: "3DM", group: "architectural", description: "Rhinoceros model", parsable: false },
-  { ext: "dae", label: "DAE", group: "architectural", description: "Collada export", parsable: false },
+  { ext: "stl", label: "STL", group: "ready", parsable: true },
+  { ext: "3mf", label: "3MF", group: "ready", parsable: true },
+  { ext: "obj", label: "OBJ", group: "ready", parsable: true },
+  { ext: "step", label: "STEP", group: "ready", parsable: false },
+  { ext: "stp", label: "STP", group: "ready", parsable: false },
+  { ext: "ifc", label: "IFC", group: "architectural", parsable: false },
+  { ext: "skp", label: "SKP", group: "architectural", parsable: false },
+  { ext: "3dm", label: "3DM", group: "architectural", parsable: false },
+  { ext: "dae", label: "DAE", group: "architectural", parsable: false },
 ];
 
 export const ACCEPTED_EXTS = FORMATS.map((f) => f.ext);
